@@ -1,6 +1,4 @@
-# RISC-V Assembler Code Explanation
-
-This document provides a detailed explanation of each line of code in the `assembler.py` file.
+# RISC-V Assembler
 
 ## Register Mapping
 

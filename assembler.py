@@ -207,7 +207,7 @@ def assemble_instruction(asm_line, label_map, pc):
         opcode_bin = INSTRUCTIONS[opcode]["opcode"]
         binary = f"{imm_11_5}{rs2_bin}{rs1_bin}{funct3}{imm_4_0}{opcode_bin}"
         return binary
-
+# This block for B type instructions is added by Jayant Raghav 2024282
     elif instr_type == "B":
         rs1, rs2, imm = parts[1].strip(","), parts[2].strip(","), parts[3]
 

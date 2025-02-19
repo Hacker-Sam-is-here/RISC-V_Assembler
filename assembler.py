@@ -240,7 +240,7 @@ def assemble_instruction(asm_line, label_map, pc):
         opcode_bin = INSTRUCTIONS[opcode]["opcode"]
         binary = f"{imm_12}{imm_10_5}{rs2_bin}{rs1_bin}{funct3}{imm_4_1}{imm_11}{opcode_bin}"
         return binary
-
+#J-Type Instruction Added By Naman Goyal 2024367
     elif instr_type == "J":
         rd, imm = parts[1].strip(","), parts[2]
 

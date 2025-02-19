@@ -1,37 +1,37 @@
 # Register mapping (ABI names to binary)
-REGISTERS = {
-    "zero": "00000",  # x0
-    "ra": "00001",    # x1
-    "sp": "00010",    # x2
-    "gp": "00011",    # x3
-    "tp": "00100",    # x4
-    "t0": "00101",    # x5
-    "t1": "00110",    # x6
-    "t2": "00111",    # x7
-    "s0": "01000",    # x8
-    "s1": "01001",    # x9
-    "a0": "01010",    # x10
-    "a1": "01011",    # x11
-    "a2": "01100",    # x12
-    "a3": "01101",    # x13
-    "a4": "01110",    # x14
-    "a5": "01111",    # x15
-    "a6": "10000",    # x16
-    "a7": "10001",    # x17
-    "s2": "10010",    # x18
-    "s3": "10011",    # x19
-    "s4": "10100",    # x20
-    "s5": "10101",    # x21
-    "s6": "10110",    # x22
-    "s7": "10111",    # x23
-    "s8": "11000",    # x24
-    "s9": "11001",    # x25
-    "s10": "11010",   # x26
-    "s11": "11011",   # x27
-    "t3": "11100",    # x28
-    "t4": "11101",    # x29
-    "t5": "11110",    # x30
-    "t6": "11111",    # x31
+# Register map (ABI -> x0-x31) 
+REG_MAP = {
+    # Zero reg and call-related
+    "x0": "00000", "zero": "00000",
+    "ra": "00001",   # Return address (x1)
+    
+    # Stack & global pointers
+    "sp": "00010",   # Stack pointer (x2)
+    "gp": "00011",   # Global pointer (x3)
+    
+    # Thread/Temp regs
+    "tp": "00100",   # Thread pointer (x4)
+    "t0": "00101", "t1": "00110", "t2": "00111",  # x5-7
+    
+    # Saved regs
+    "s0": "01000", "s1": "01001",  # x8-9
+    
+    # Function args
+    "a0": "01010", "a1": "01011",   # x10-11
+    "a2": "01100", "a3": "01101",   # x12-13
+    "a4": "01110", "a5": "01111",   # x14-15
+    "a6": "10000", "a7": "10001",   # x16-17
+    
+    # More saved
+    "s2": "10010", "s3": "10011",   # x18-19
+    "s4": "10100", "s5": "10101",   # x20-21
+    "s6": "10110", "s7": "10111",   # x22-23
+    "s8": "11000", "s9": "11001",   # x24-25
+    "s10": "11010", "s11": "11011", # x26-27
+    
+    # Temp extras
+    "t3": "11100", "t4": "11101",   # x28-29
+    "t5": "11110", "t6": "11111"    # x30-31
 }
 
 # Opcodes and function codes
@@ -48,18 +48,24 @@ INSTRUCTIONS = {
 }
 
 
-def resolve_labels(assembly_code):
-    """
-    Resolve labels in the assembly code and return a label-to-address mapping.
-    """
+def find_labels(code):
+    """Scan code for labels and build address map"""
     labels = {}
-    address = 0  # Program counter (PC)
-    for line in assembly_code:
-        if ":" in line:
-            label = line.split(":")[0].strip()
-            labels[label] = address
+    pc = 0  # Start at 0
+    
+    # First pass - find all labels
+    for lin in code:
+        if ':' in lin:
+            lbl = lin.split(':')[0].strip()
+            if lbl in labels:
+                raise ValueError(f"Duplicate label {lbl}")
+            labels[lbl] = pc
         else:
-            address += 4  # Each instruction is 4 bytes
+            pc += 4  # 4 bytes per instruction
+            
+    # Debug: show found labels
+    print(f"Found {len(labels)} labels: {', '.join(labels.keys())}")
+    
     return labels
 
 def add_virtual_halt(assembly_code):
@@ -85,15 +91,15 @@ def write_binary_file(file_path, binary_code):
         for binary in binary_code:
             file.write(binary + "\n")
 
-def assemble_instruction(line, labels, current_address):
-    """Assemble a single RISC-V instruction."""
-    # Skip empty lines and comments
-    line = line.strip()
-    if not line or line.startswith('#'):
+def assemble_instruction(asm_line, label_map, pc):
+    """Convert assembly line to machine code"""
+    # Skip comments/empty lines
+    asm_line = asm_line.split('#')[0].strip()
+    if not asm_line:
         return None
         
     # Split the instruction into parts
-    parts = [part.strip() for part in line.split()]
+    parts = [part.strip() for part in asm_line.split()]
     if not parts:
         return None
         
@@ -117,8 +123,7 @@ def assemble_instruction(line, labels, current_address):
     if len(parts) < min_parts.get(instr_type, 3):
         raise ValueError(f"Insufficient operands for {opcode} instruction. Expected at least {min_parts.get(instr_type)} parts, got {len(parts)}")
 
-    print(f"parts: {parts}") # Debug print
-    print(f"opcode: {opcode}, instr_type: {instr_type}") # Debug print
+    print(f"Processing: {asm_line}")  # Show current line
 
     # Continue with instruction type handling...
     if instr_type == "R":
@@ -129,50 +134,49 @@ def assemble_instruction(line, labels, current_address):
         opcode = INSTRUCTIONS[opcode]["opcode"]
 
         # Convert registers to binary
-        rd_bin = REGISTERS.get(rd, "00000")
-        rs1_bin = REGISTERS.get(rs1, "00000")
-        rs2_bin = REGISTERS.get(rs2, "00000")
+        # Get register codes with fallback to zero
+        rd_bin = REG_MAP.get(rd, "00000")  
+        rs1_bin = REG_MAP.get(rs1, "00000")
+        rs2_bin = REG_MAP.get(rs2, "00000")
 
         # Combine fields into 32-bit binary
         binary = f"{funct7}{rs2_bin}{rs1_bin}{funct3}{rd_bin}{opcode}"
         return binary
 
     elif instr_type == "I":
+        # Load word uses a slightly different format
         if opcode == "lw":
-            # Format: lw rd, imm(rs1)
             rd = parts[1].strip(",")
-            offset_rs1 = parts[2]  # Contains both offset and rs1
+            offset_rs1 = parts[2]  # e.g. 12(sp)
             offset, rs1 = offset_rs1.split("(")
             rs1 = rs1.strip(")")
             imm = offset
         else:
-            # Format: addi rd, rs1, imm
             rd, rs1, imm = parts[1].strip(","), parts[2].strip(","), parts[3]
 
         funct3 = INSTRUCTIONS[opcode]["funct3"]
-        opcode = INSTRUCTIONS[opcode]["opcode"]
+        opcode_bin = INSTRUCTIONS[opcode]["opcode"]
 
-        # Convert registers to binary
-        rd_bin = REGISTERS.get(rd, "00000")
-        rs1_bin = REGISTERS.get(rs1, "00000")
+        # Registers to binary
+        rd_bin = REG_MAP.get(rd, "00000")
+        rs1_bin = REG_MAP.get(rs1, "00000")
 
-        # Convert immediate to 12-bit binary
-        if imm in labels:
-            # Calculate offset for labels
-            offset = labels[imm] - current_address
+        # Immediates (offset or direct value)
+        if imm in label_map:
+            offset = label_map[imm] - pc
             imm_int = offset
         else:
-            # Handle hex numbers (0x...) and decimal numbers
+            # Handle hex/dec numbers
             if imm.startswith('0x'):
                 imm_int = int(imm, 16)
             else:
                 imm_int = int(imm)
         if imm_int < -2048 or imm_int > 2047:
             raise ValueError(f"Immediate {imm_int} out of bounds for I-type instruction")
-        imm_bin = format(imm_int & 0xFFF, "012b")  # 12-bit signed immediate
+        imm_bin = format(imm_int & 0xFFF, "012b")  # 12-bit signed
 
-        # Combine fields into 32-bit binary
-        binary = f"{imm_bin}{rs1_bin}{funct3}{rd_bin}{opcode}"
+        # Final binary I-type
+        binary = f"{imm_bin}{rs1_bin}{funct3}{rd_bin}{opcode_bin}"
         return binary
 
     elif instr_type == "S":
@@ -181,8 +185,8 @@ def assemble_instruction(line, labels, current_address):
         rs1 = rs1.strip(")")
 
         # Convert registers to binary
-        rs2_bin = REGISTERS.get(rs2, "00000")
-        rs1_bin = REGISTERS.get(rs1, "00000")
+        rs2_bin = REG_MAP.get(rs2, "00000")
+        rs1_bin = REG_MAP.get(rs1, "00000")
 
         # Convert immediate to 12-bit binary
         # Handle hex numbers (0x...) and decimal numbers
@@ -208,12 +212,12 @@ def assemble_instruction(line, labels, current_address):
         rs1, rs2, imm = parts[1].strip(","), parts[2].strip(","), parts[3]
 
         # Convert registers to binary
-        rs1_bin = REGISTERS.get(rs1, "00000")
-        rs2_bin = REGISTERS.get(rs2, "00000")
+        rs1_bin = REG_MAP.get(rs1, "00000")
+        rs2_bin = REG_MAP.get(rs2, "00000")
 
         # Calculate offset for labels
-        if imm in labels:
-            offset = labels[imm] - current_address
+        if imm in label_map:
+            offset = label_map[imm] - pc
             imm_int = offset
         else:
             # Handle hex numbers (0x...) and decimal numbers
@@ -241,11 +245,11 @@ def assemble_instruction(line, labels, current_address):
         rd, imm = parts[1].strip(","), parts[2]
 
         # Convert register to binary
-        rd_bin = REGISTERS.get(rd, "00000")
+        rd_bin = REG_MAP.get(rd, "00000")
 
         # Calculate offset for labels
-        if imm in labels:
-            offset = labels[imm] - current_address
+        if imm in label_map:
+            offset = label_map[imm] - pc
             imm_int = offset
         else:
             # Handle hex numbers (0x...) and decimal numbers
@@ -276,8 +280,8 @@ def assemble(assembly_code):
     """
     Assemble RISC-V assembly code into binary.
     """
-    # Resolve labels
-    labels = resolve_labels(assembly_code)
+    # Find and map labels
+    labels = find_labels(assembly_code)
 
     # Add Virtual Halt if missing
     assembly_code = add_virtual_halt(assembly_code)
@@ -306,10 +310,12 @@ def assemble(assembly_code):
     return binary_code
 
 if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) < 2:
-        print("Usage: python assembler.py <input_file>")
+    """Main CLI for assembler"""
+    import sys, os
+    
+    if len(sys.argv) != 2:
+        print(f"Usage: {os.path.basename(__file__)} input.asm")
+        print("Example: assembler.py demo.asm")
         sys.exit(1)
 
     input_file = sys.argv[1]

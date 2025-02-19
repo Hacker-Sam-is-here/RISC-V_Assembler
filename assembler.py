@@ -178,7 +178,7 @@ def assemble_instruction(asm_line, label_map, pc):
         # Final binary I-type
         binary = f"{imm_bin}{rs1_bin}{funct3}{rd_bin}{opcode_bin}"
         return binary
-
+#S-Type Instructions added Daksh Chundi 2024166
     elif instr_type == "S":
         rs2, offset_rs1 = parts[1].strip(","), parts[2]
         offset, rs1 = offset_rs1.split("(")

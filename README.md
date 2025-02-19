@@ -1,4 +1,6 @@
-# RISC-V Assembler 
+# RISC-V Assembler Code Explanation
+
+This document provides a detailed explanation of each line of code in the `assembler.py` file.
 
 ## Register Mapping
 
@@ -38,7 +40,6 @@ REG_MAP = {
     "t3": "11100", "t4": "11101",   # x28-29
     "t5": "11110", "t6": "11111"    # x30-31
 }
-```
 
 This section defines a dictionary `REG_MAP` that maps RISC-V register names (both ABI names like "ra", "sp", "a0" and their numerical counterparts like "x0", "x1") to their 5-bit binary representations. This mapping is used during the assembly process to convert register names used in the assembly code into their binary equivalents for machine code.
 
@@ -139,7 +140,7 @@ This function reads the assembly code from a file specified by `file_path`.
 ## `write_binary_file(file_path, binary_code)` Function
 
 ```python
-def write_binary_file(file_path, binary_code):
+def write_binary_file(file_path):
     """
     Write binary code to a file.
     """
@@ -474,3 +475,5 @@ This block of code is executed when the `assembler.py` file is run as a script.
     - `binary_code = assemble(assembly_code)`: Calls the `assemble` function to convert the assembly code into binary code.
     - `write_binary_file("output.bin", binary_code)`: Calls the `write_binary_file` function to write the binary code to a file named "output.bin".
     - `print("Assembled binary written to output.bin")`: Prints a message to the console indicating that the assembly process is complete and the binary code has been written to the output file.
+
+</file_content>

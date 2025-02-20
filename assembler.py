@@ -116,7 +116,6 @@ def assemble_instruction(asm_line, label_map, pc):
         "I": 3,  # opcode, rd, offset(rs1) or opcode, rd, rs1, imm
         "S": 3,  # opcode, rs2, offset(rs1)
         "B": 4,  # opcode, rs1, rs2, imm/label
-        "U": 3,  # opcode, rd, imm
         "J": 3   # opcode, rd, imm/label
     }
     

@@ -1,0 +1,5 @@
+addi s1,zero,5
+addi s2,zero,0
+sll t1,zero,t0
+xor s3,s2,s1
+beq zero,zero,0

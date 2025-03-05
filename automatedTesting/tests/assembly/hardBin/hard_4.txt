@@ -1,0 +1,14 @@
+sub s2,s2,s2  
+jalr ra,a4,-3  
+sw s3,43(s6)    
+blt a3,a4,400  
+auipc s3,4096
+bltu s1,s0,8
+sltiu s1,s0,8
+lw a4,30(s3)   
+addi s3,s3,4   
+sw s2,38(s7)   
+add s2,s2,s3   
+sw s4,50(a5)    
+and a5,s2,s6    
+beq zero,zero,0  

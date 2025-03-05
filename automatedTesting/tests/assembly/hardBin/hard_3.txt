@@ -1,0 +1,14 @@
+addi t0,zero,10
+labelA: beq s0,s1,labelB
+addi s0,s0,2
+blt s0,s1,labelC
+addi t1,zero,15
+sltiu s1,s0,8
+labelB: bgeu s1,s0,labelD
+addi s1,s1,3
+jal ra,labelC
+addi t2,zero,20
+labelC: blt s1,s0,labelA
+jal ra,labelD
+addi s0,s0,1
+labelD: beq zero,zero,0

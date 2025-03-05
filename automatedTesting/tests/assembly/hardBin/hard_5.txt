@@ -1,0 +1,14 @@
+sltiu t0,s3,-4
+sltiu t1,s4,10
+addi s4,s2,7
+add s3,s2,s1
+addi s4,zero,-10
+sw s1,0(s0)
+lw t4,0(s5)
+bgeu s1,s0,8
+lui s0,-2147483648
+auipc s1,-2147483648
+xor t5,s0,s1
+sll a0,t5,s0
+sltiu t0,s3,-4
+beq zero,zero,0

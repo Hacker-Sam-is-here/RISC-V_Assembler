@@ -1,0 +1,14 @@
+add s1,zero,t0
+sub s4,s2,s8
+sll s8,t2,s3
+slt t0,s11,t1
+or t3,t4,t5
+and t6,s0,s1
+lw s6,23(s3)
+sw s2,69(s4)
+lw a0,0(s4)
+addi gp,tp,-89
+jalr a1,s3,96
+bgeu ra,a7,23
+jal a6,43424
+beq zero,zero,0

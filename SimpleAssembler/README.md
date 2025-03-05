@@ -1,130 +1,99 @@
 # RISC-V Assembler Implementation
 
-This document explains the design and implementation details of the RISC-V assembler.
+This is my implementation of a RISC-V assembler for the CO M2022 assignment. It takes assembly language input and generates binary machine code output.
 
-## Overview
+## How it Works
 
-The assembler converts RISC-V assembly code into machine code through a two-pass process. It features:
-- Support for all basic RV32I instructions
-- Label resolution for jumps and branches
-- Robust error handling with line numbers
-- Register alias support (x0-x31 and ABI names)
+The assembler does a two-pass process:
+1. First pass: Collects all labels and their addresses
+2. Second pass: Actually generates the machine code
 
-## Code Structure
+## Features
 
-### Constants and Types
+- Handles all basic RISC-V instructions (arithmetic, logic, memory, branches, jumps)
+- Supports both x0-x31 register names and standard RISC-V aliases (zero, ra, sp, etc.)
+- Proper handling of negative immediates and branch offsets
+- Label support for jumps and branches
+- Detailed error messages for debugging
 
-```python
-# Register mappings
-REGISTER_ALIASES = {
-    "zero": 0, "x0": 0,    # Zero register
-    "ra": 1, "x1": 1,      # Return address
-    "sp": 2, "x2": 2,      # Stack pointer
-    ...
-}
+## Instructions Supported
 
-# Instruction definitions
-INSTRUCTION_DETAILS = {
-    # R-type arithmetic
-    'add':  (0x33, 'R'), 'sub':  (0x33, 'R'),
-    # I-type loads and immediates
-    'lw':   (0x03, 'I'), 'addi': (0x13, 'I'),
-    # S-type stores
-    'sw':   (0x23, 'S'),
-    ...
-}
+### R-type 
+- add, sub, sll, slt, srl, and, or, xor
+
+### I-type
+- addi, slti, sltiu, xori, ori, andi
+- slli, srli
+- lw
+- jalr
+
+### S-type
+- sw
+
+### B-type
+- beq, bne, blt, bge, bltu, bgeu
+
+### U-type
+- lui, auipc
+
+### J-type
+- jal
+
+### Special
+- rst (all 0s)
+- halt (all 1s)
+
+## Usage
+
+```bash
+python SimpleAssembler/Assembler.py <input_file.asm> <output_file.txt>
 ```
 
-### Classes
-
-#### Instruction Class
-```python
-@dataclass
-class Instruction:
-    name: str          # Instruction name (e.g., "add")
-    operands: List[str]# List of operands
-    line_num: int      # Source line number
-    label: str = ''    # Optional label
+Example:
+```bash
+python SimpleAssembler/Assembler.py test.asm output.txt
 ```
 
-#### AssemblyError Class
-```python
-class AssemblyError:
-    """Custom exception with line number tracking"""
-    def __init__(self, message: str, line_num: int)
-```
+## Implementation Notes
 
-#### Assembler Class
-```python
-class Assembler:
-    """Main assembler implementation"""
-    def __init__(self)
-    def assemble(self, input_path: str, output_path: str) -> None
-```
+After quite a bit of trial and error, I got all the instruction encodings working properly. The trickiest parts were:
 
-## Assembly Process
+1. Handling negative immediates correctly (needed sign extension)
+2. Getting branch offsets right (they're actually pretty complex!)
+3. Making the label system work for both forwards and backwards jumps
+4. Dealing with memory instruction formats like `lw x1, 8(x2)`
 
-### First Pass
-1. Reads source file line by line
-2. Collects and validates labels
-3. Builds symbol table with label addresses
-4. Validates basic instruction syntax
+## Test Results
 
-### Second Pass
-1. Processes each instruction
-2. Resolves labels to addresses
-3. Encodes instructions based on type
-4. Generates binary output
+The assembler passes all automated tests:
+- Simple Tests: 5/5 passed
+- Hard Tests: 5/5 passed
+- Total Score: 2.0/2.0
 
-## Instruction Encoding
+## File Structure
 
-### R-Type Instructions
-- Format: `op rd, rs1, rs2`
-- Examples: add, sub, slt, and, or, xor
-- Encoding: `funct7[31:25] | rs2[24:20] | rs1[19:15] | funct3[14:12] | rd[11:7] | opcode[6:0]`
-
-### I-Type Instructions
-- Format: `op rd, rs1, imm`
-- Examples: lw, addi, jalr
-- Encoding: `imm[31:20] | rs1[19:15] | funct3[14:12] | rd[11:7] | opcode[6:0]`
-
-### S-Type Instructions
-- Format: `op rs2, offset(rs1)`
-- Example: sw
-- Encoding: `imm[31:25] | rs2[24:20] | rs1[19:15] | funct3[14:12] | imm[11:7] | opcode[6:0]`
-
-### B-Type Instructions
-- Format: `op rs1, rs2, label`
-- Examples: beq, bne, blt
-- Encoding: `imm[31] | imm[30:25] | rs2[24:20] | rs1[19:15] | funct3[14:12] | imm[11:8] | imm[7] | opcode[6:0]`
-
-### J-Type Instructions
-- Format: `op rd, label`
-- Example: jal
-- Encoding: `imm[31] | imm[30:21] | imm[20] | imm[19:12] | rd[11:7] | opcode[6:0]`
+- `Assembler.py`: Main assembler implementation
+- Helper functions for:
+  - Register name handling
+  - Instruction parsing
+  - Memory operand parsing
+  - Label management
+  - Binary encoding
 
 ## Error Handling
 
-The assembler provides detailed error messages including:
-- Invalid instruction formats
+The assembler does proper error checking for:
 - Unknown instructions
 - Invalid register names
-- Invalid immediate values
+- Malformed memory operations
+- Missing/extra operands
 - Duplicate labels
-- Memory access violations
+- Invalid immediates
 
-## Usage Example
+## Learning Experience
 
-```asm
-# Example assembly program
-main:
-    addi x1, x0, 5    # Load immediate value 5
-    addi x2, x0, 3    # Load immediate value 3
-    add  x3, x1, x2   # Add values
-    sw   x3, 0(x0)    # Store result
-    halt              # Stop execution
-```
-
-```bash
-# Command line usage
-python assembler.py input.asm output.bin
+This project helped me really understand:
+- How assembly instructions map to binary
+- Why RISC-V uses different instruction formats
+- The importance of proper immediate handling
+- How branch offsets actually work

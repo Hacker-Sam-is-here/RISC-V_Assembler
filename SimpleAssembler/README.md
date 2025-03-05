@@ -1,6 +1,6 @@
 # RISC-V Assembler Implementation
 
-This is my implementation of a RISC-V assembler for the CO M2022 assignment. It takes assembly language input and generates binary machine code output.
+This is my implementation of a RISC-V assembler for the CO assignment. It takes assembly language input and generates binary machine code output.
 
 ## How it Works
 

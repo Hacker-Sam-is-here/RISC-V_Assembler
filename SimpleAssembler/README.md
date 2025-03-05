@@ -1,154 +1,130 @@
 # RISC-V Assembler Implementation
 
-This document explains the line-by-line implementation of the RISC-V assembler.
+This document explains the design and implementation details of the RISC-V assembler.
 
-## Class Overview
+## Overview
 
+The assembler converts RISC-V assembly code into machine code through a two-pass process. It features:
+- Support for all basic RV32I instructions
+- Label resolution for jumps and branches
+- Robust error handling with line numbers
+- Register alias support (x0-x31 and ABI names)
+
+## Code Structure
+
+### Constants and Types
+
+```python
+# Register mappings
+REGISTER_ALIASES = {
+    "zero": 0, "x0": 0,    # Zero register
+    "ra": 1, "x1": 1,      # Return address
+    "sp": 2, "x2": 2,      # Stack pointer
+    ...
+}
+
+# Instruction definitions
+INSTRUCTION_DETAILS = {
+    # R-type arithmetic
+    'add':  (0x33, 'R'), 'sub':  (0x33, 'R'),
+    # I-type loads and immediates
+    'lw':   (0x03, 'I'), 'addi': (0x13, 'I'),
+    # S-type stores
+    'sw':   (0x23, 'S'),
+    ...
+}
+```
+
+### Classes
+
+#### Instruction Class
+```python
+@dataclass
+class Instruction:
+    name: str          # Instruction name (e.g., "add")
+    operands: List[str]# List of operands
+    line_num: int      # Source line number
+    label: str = ''    # Optional label
+```
+
+#### AssemblyError Class
+```python
+class AssemblyError:
+    """Custom exception with line number tracking"""
+    def __init__(self, message: str, line_num: int)
+```
+
+#### Assembler Class
 ```python
 class Assembler:
-```
-The main class that handles the conversion of RISC-V assembly code to machine code.
-
-## Class Initialization
-
-```python
-def __init__(self):
+    """Main assembler implementation"""
+    def __init__(self)
+    def assemble(self, input_path: str, output_path: str) -> None
 ```
 
-### Register Aliases
-```python
-self.aliases = {
-    "zero": 0, "x0": 0, "ra": 1, "x1": 1, "sp": 2, "x2": 2, ...
-}
+## Assembly Process
+
+### First Pass
+1. Reads source file line by line
+2. Collects and validates labels
+3. Builds symbol table with label addresses
+4. Validates basic instruction syntax
+
+### Second Pass
+1. Processes each instruction
+2. Resolves labels to addresses
+3. Encodes instructions based on type
+4. Generates binary output
+
+## Instruction Encoding
+
+### R-Type Instructions
+- Format: `op rd, rs1, rs2`
+- Examples: add, sub, slt, and, or, xor
+- Encoding: `funct7[31:25] | rs2[24:20] | rs1[19:15] | funct3[14:12] | rd[11:7] | opcode[6:0]`
+
+### I-Type Instructions
+- Format: `op rd, rs1, imm`
+- Examples: lw, addi, jalr
+- Encoding: `imm[31:20] | rs1[19:15] | funct3[14:12] | rd[11:7] | opcode[6:0]`
+
+### S-Type Instructions
+- Format: `op rs2, offset(rs1)`
+- Example: sw
+- Encoding: `imm[31:25] | rs2[24:20] | rs1[19:15] | funct3[14:12] | imm[11:7] | opcode[6:0]`
+
+### B-Type Instructions
+- Format: `op rs1, rs2, label`
+- Examples: beq, bne, blt
+- Encoding: `imm[31] | imm[30:25] | rs2[24:20] | rs1[19:15] | funct3[14:12] | imm[11:8] | imm[7] | opcode[6:0]`
+
+### J-Type Instructions
+- Format: `op rd, label`
+- Example: jal
+- Encoding: `imm[31] | imm[30:21] | imm[20] | imm[19:12] | rd[11:7] | opcode[6:0]`
+
+## Error Handling
+
+The assembler provides detailed error messages including:
+- Invalid instruction formats
+- Unknown instructions
+- Invalid register names
+- Invalid immediate values
+- Duplicate labels
+- Memory access violations
+
+## Usage Example
+
+```asm
+# Example assembly program
+main:
+    addi x1, x0, 5    # Load immediate value 5
+    addi x2, x0, 3    # Load immediate value 3
+    add  x3, x1, x2   # Add values
+    sw   x3, 0(x0)    # Store result
+    halt              # Stop execution
 ```
-- Maps register names to their numeric values
-- Supports both ABI names (e.g., "ra", "sp") and numeric names (e.g., "x0", "x1")
-- Important registers:
-  - x0/zero: Hardwired zero
-  - ra: Return address
-  - sp: Stack pointer
-  - etc.
 
-### Instruction Opcodes
-```python
-self.instructions = {
-    'add': 0x33, 'sub': 0x33, 'slt': 0x33, ...
-}
-```
-- Maps instruction names to their base opcodes
-- Instructions are grouped by type:
-  - R-type (register): add, sub, slt, etc.
-  - I-type (immediate): lw, addi, etc.
-  - S-type (store): sw
-  - B-type (branch): beq, bne, etc.
-  - U-type (upper immediate): lui, auipc
-  - J-type (jump): jal, jalr
-
-## Helper Methods
-
-### Sign Extension
-```python
-def sign_extend(self, value, bits):
-```
-- Handles sign extension for immediate values
-- Parameters:
-  - value: The number to sign extend
-  - bits: Number of bits in the original value
-- Returns sign-extended value
-
-```python
-def sign_extend_64(self, value, bits):
-```
-- Special case for 64-bit values
-- Handles Python's integer implementation
-- Used for lui/auipc instructions
-
-## Main Assembly Process
-
-### The Assemble Method
-```python
-def assemble(self, input_path, output_path):
-```
-Performs two-pass assembly:
-
-#### First Pass
-- Collects all labels and their addresses
-- Calculates the address of each instruction
-- Handles both labeled and non-labeled lines
-- Skips empty lines and comments
-
-#### Second Pass
-Generates machine code for each instruction:
-
-1. **R-type Instructions**
-   ```python
-   if inst in ['add', 'sub', 'slt', 'sll', 'srl', 'or', 'and', 'xor']:
-   ```
-   - Format: `inst rd, rs1, rs2`
-   - Fields: funct7|rs2|rs1|funct3|rd|opcode
-
-2. **I-type Instructions**
-   ```python
-   elif inst in ['addi', 'slti', 'sltiu', 'ori', 'andi', 'xori']:
-   ```
-   - Format: `inst rd, rs1, imm`
-   - Fields: imm[11:0]|rs1|funct3|rd|opcode
-
-3. **Load Instructions**
-   ```python
-   elif inst in ['lw']:
-   ```
-   - Format: `lw rd, offset(rs1)`
-   - Fields: imm[11:0]|rs1|funct3|rd|opcode
-
-4. **Store Instructions**
-   ```python
-   elif inst == 'sw':
-   ```
-   - Format: `sw rs2, offset(rs1)`
-   - Fields: imm[11:5]|rs2|rs1|funct3|imm[4:0]|opcode
-
-5. **Branch Instructions**
-   ```python
-   elif inst in ['beq', 'bne', 'blt', 'bge', 'bltu', 'bgeu']:
-   ```
-   - Format: `inst rs1, rs2, label/offset`
-   - Fields: imm[12|10:5]|rs2|rs1|funct3|imm[4:1|11]|opcode
-
-6. **Jump Instructions**
-   ```python
-   elif inst in ['jal', 'jalr']:
-   ```
-   - JAL Format: `jal rd, label/offset`
-   - JALR Format: `jalr rd, rs1, imm`
-   - Fields (JAL): imm[20|10:1|11|19:12]|rd|opcode
-   - Fields (JALR): imm[11:0]|rs1|funct3|rd|opcode
-
-7. **Upper Immediate Instructions**
-   ```python
-   elif inst in ['lui', 'auipc']:
-   ```
-   - Format: `inst rd, imm`
-   - Fields: imm[31:12]|rd|opcode
-
-### Output Generation
-```python
-with open(output_path, 'w') as f:
-    for code in codes:
-        binary = f"{code:032b}\n"
-        f.write(binary)
-```
-- Converts each instruction to 32-bit binary
-- Writes one instruction per line
-- Uses zero padding to ensure 32-bit width
-
-## Usage
-```python
-if __name__ == "__main__":
-```
-Command line usage:
 ```bash
-python3 assembler.py <input_file> <output_file>
-```
-- input_file: RISC-V assembly source code
-- output_file: Generated binary machine code
+# Command line usage
+python assembler.py input.asm output.bin

@@ -1,0 +1,6 @@
+Error: PC 0x00000000: Unknown opcode: 0
+
+Final Data Memory State:
+[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+Simulation halted.

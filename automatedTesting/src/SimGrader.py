@@ -25,9 +25,9 @@ class SimGrader(Grader):
 		self.operating_system = operating_system
 		
 		if self.operating_system == 'linux':
-			self.SIM_RUN_DIR = "../SimpleSimulator/"
+			self.SIM_RUN_DIR = "../../SimpleSimulator/"
 		elif self.operating_system == 'windows':
-			self.SIM_RUN_DIR = "..\\SimpleSimulator\\"
+			self.SIM_RUN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "SimpleSimulator"))
 
 	def handleBin(self, genDir, expDir):
 		
@@ -35,33 +35,55 @@ class SimGrader(Grader):
 		totalCount = 0
 		
 		curDir = os.getcwd()
-		if self.operating_system == 'linux':
-			tests = self.listFiles("tests/bin/" + genDir)
-		elif self.operating_system == 'windows':
-			tests = self.listFiles("tests\\bin\\" + genDir)
+		base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+		
+		# Use absolute paths for test files
+		test_bin_dir = os.path.abspath(os.path.join(base_dir, "tests", "bin", genDir))
+		tests = self.listFiles(test_bin_dir)
 		tests.sort()
+		
+		# Change to simulator directory using absolute path
 		os.chdir(self.SIM_RUN_DIR)
 		
 		for test in tests:
+			python_command = 'python Simulator.py' if self.operating_system == 'windows' else 'python3 Simulator.py'
 			
-			python_command = 'python3 Simulator.py'
-			if self.operating_system == 'linux':
-				machine_code_file = ' ' + '../automatedTesting/tests/bin/' + genDir + '/' + test
-				output_trace_file = ' ' + '../automatedTesting/tests/user_traces/' + genDir + '/' + test
-			elif self.operating_system == 'windows':
-				machine_code_file = ' ' + '..\\automatedTesting\\tests\\bin\\' + genDir + '\\' + test
-				output_trace_file = ' ' + '..\\automatedTesting\\tests\\user_traces\\' + genDir + '\\' + test
-			command = python_command + machine_code_file + output_trace_file
+			# Create absolute paths for all files
+			machine_code_file = os.path.abspath(os.path.join(test_bin_dir, test))
+			output_trace_dir = os.path.abspath(os.path.join(base_dir, "tests", "user_traces", genDir))
+			output_trace_file = os.path.abspath(os.path.join(output_trace_dir, test))
+			output_read_trace_file = os.path.abspath(os.path.join(output_trace_dir, test.split(".")[0] + "_r.txt"))
+			
+			# Ensure output directory exists
+			if not os.path.exists(output_trace_dir):
+				os.makedirs(output_trace_dir)
+			
+			# Clean up existing files
+			for file in [output_trace_file, output_read_trace_file]:
+				if os.path.exists(file):
+					os.remove(file)
+			
+			# Build command with proper path separators
+			# Create output directory structure
+			if not os.path.exists(output_trace_dir):
+				os.makedirs(output_trace_dir, exist_ok=True)
+
+			# Build command with proper path separators
+			command = f"{python_command} \"{machine_code_file}\" \"{output_trace_file}\""
 			os.system(command)
 			
+			# Read generated trace
+			generatedTrace = open(output_trace_file, 'r').readlines()
 			
-			generatedTrace = open(output_trace_file.strip(),'r').readlines()
-
-			if self.operating_system == 'linux':
-				exact_trace_file = "../automatedTesting/tests/traces/" + expDir + "/" + test
-			elif self.operating_system == 'windows':
-				exact_trace_file = "..\\automatedTesting\\tests\\traces\\" + expDir + "\\" + test
-			expectedTrace = open(exact_trace_file,'r').readlines()
+			# Get expected trace file path
+			exact_trace_file = os.path.abspath(os.path.join(base_dir, "tests", "traces", expDir, test))
+				
+			try:
+				expectedTrace = open(exact_trace_file,'r').readlines()
+			except FileNotFoundError:
+				self.printSev(self.HIGH, bcolors.WARNING + "[Golden Binary Trace File Not Found]\n" + exact_trace_file)
+				expectedTrace = " "
+			
 
 			if self.diff(generatedTrace, expectedTrace):
 				self.printSev(self.HIGH, bcolors.OKGREEN + "[PASSED]" + bcolors.ENDC + " " + test)

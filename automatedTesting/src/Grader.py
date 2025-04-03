@@ -1,5 +1,4 @@
 # Parent class for all graders
-import os
 from os import listdir
 from os.path import isfile, join
 from colors import bcolors
@@ -19,8 +18,6 @@ class Grader:
 			print(string, end=end)
 
 	def listFiles(self, dirPath):
-		if not os.path.exists(dirPath):
-			os.makedirs(dirPath)
 		return [f for f in listdir(dirPath) if isfile(join(dirPath, f))]
 
 

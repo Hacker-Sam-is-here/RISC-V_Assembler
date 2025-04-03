@@ -1,0 +1,2 @@
+# This is a placeholder file to ensure directory structure exists
+# The directory is used for storing test output traces

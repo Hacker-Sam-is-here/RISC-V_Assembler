@@ -1,188 +1,134 @@
-# RISC-V Simulator Implementation
-
-This document explains the design and implementation of the RISC-V simulator.
+# RISC-V Simulator Documentation
 
 ## Overview
+This is a custom RISC-V simulator implementation that executes machine code instructions. Key components:
 
-The simulator executes RISC-V machine code while maintaining system state and providing detailed execution traces. Features include:
-- Full RV32I instruction support
-- Memory management (data and stack)
-- Detailed execution tracing
-- Rich error handling
-- Register state tracking
+1. **Instruction Execution Pipeline**:
+   - Fetches, decodes, and executes RISC-V instructions
+   - Handles all standard instruction formats (R/I/S/B/J-type)
+   - Processes 32-bit binary instructions
 
-## Architecture
+2. **Register File**:
+   - 32 general-purpose registers (x0-x31)
+   - x0 is hardwired to zero
+   - x2 (sp) initialized as stack pointer (default: 380)
 
-### Memory Layout
+3. **Memory System**:
+   - 128-byte address space (32 words)
+   - Word-aligned memory access
+   - Supports load/store operations
+
+4. **Program Counter**:
+   - Tracks current execution address
+   - Handles sequential and branch/jump operations
+   - Default increment of 4 bytes per instruction
+
+## Code Walkthrough
+
+### 1. Binary Utilities
 ```python
-# Constants
-MEM_SIZE = 32   # 32 words (128 bytes) for each memory segment
-NUM_REGS = 32   # 32 general-purpose registers
-
-# Memory segments
-registers = [0] * NUM_REGS       # x0-x31
-data_memory = [0] * MEM_SIZE     # Data segment
-stack_memory = [0] * MEM_SIZE    # Stack segment (grows down)
+class BinaryUtils:
+    @staticmethod
+    def to_binary32(value: int) -> str:
+        """Convert decimal to 32-bit binary string with 0b prefix, handling two's complement."""
+        if value < 0:
+            return bin(value & 0xFFFFFFFF)
+        return bin(value)
 ```
+Key Features:
+- **Two's Complement Handling**: Properly converts negative integers to their 32-bit binary representation
+- **Positive Values**: Directly converts positive integers to binary
+- **Format**: Returns strings with '0b' prefix for clarity
+- **Usage**: Primarily used for register/memory value representation in trace output
 
-### Instruction Support
-
+### 2. Instruction Execution
 ```python
-# Instruction opcodes
-OPCODES = {
-    # R-type arithmetic
-    'add': 1, 'sub': 2, 'slt': 3, 'srl': 4,
-    'or': 5, 'and': 6,
-    
-    # Memory operations
-    'lw': 7, 'sw': 10,
-    
-    # I-type operations
-    'addi': 8, 'jalr': 9,
-    
-    # Branch operations
-    'beq': 11, 'bne': 12, 'blt': 13,
-    
-    # Jump operations
-    'jal': 14,
-    
-    # Special operations
-    'rst': 15, 'halt': 16
-}
+class RISCVInstruction:
+    def execute(self) -> int:
+        """Execute the instruction and return the next PC value."""
+        opcode = self.binary[25:32]  # Extract 7-bit opcode
+        funct3 = self.binary[17:20]   # Extract 3-bit funct3 (for R/I/S/B-type)
+        funct7 = self.binary[0:7]     # Extract 7-bit funct7 (for R-type)
 ```
+Execution Flow:
+1. **Opcode Decoding**: Identifies instruction type (R/I/S/B/J)
+2. **Field Extraction**:
+   - R-type: rs1, rs2, rd, funct3, funct7
+   - I-type: rs1, rd, immediate
+   - S-type: rs1, rs2, immediate
+   - B-type: rs1, rs2, branch offset
+   - J-type: jump target
+3. **Operation Execution**:
+   - Performs arithmetic/logical operations
+   - Handles memory load/store
+   - Manages control flow (branches/jumps)
+4. **PC Update**: Returns next instruction address
 
-## Classes
-
-### ExecutionResult
+### 3. Register File
 ```python
-@dataclass
-class ExecutionResult:
-    """Holds the result of instruction execution"""
-    next_pc: int          # Next program counter value
-    opcode_name: str      # Name of executed instruction
-    error: str = ''       # Optional error message
+self.registers = [0] * 32  # x0-x31
+self.registers[2] = 380   # Initialize stack pointer (x2/sp)
 ```
+Register Conventions:
+- **x0**: Hardwired zero (always returns 0)
+- **x1**: Return address (ra)
+- **x2**: Stack pointer (sp)
+- **x3-x7**: Temporary registers (t0-t6)
+- **x8-x9**: Saved registers (s0-s1)
+- **x10-x17**: Function arguments/return values (a0-a7)
 
-### SimulationError
+Operations:
+- Read/write access during instruction execution
+- Zero register (x0) writes are ignored
+- All registers are 32-bit wide
+
+### 4. Memory System
 ```python
-class SimulationError:
-    """Custom exception for runtime errors"""
-    def __init__(self, message: str, pc: int)
+self.memory = {addr: 0 for addr in range(65536, 65664, 4)}  # 0x00010000-0x0001007F
 ```
+Memory Characteristics:
+- **Address Range**: 0x00010000 to 0x0001007F (128 bytes)
+- **Alignment**: Word-addressable (4-byte granularity)
+- **Operations**:
+  - Load: Reads data from memory to registers
+  - Store: Writes data from registers to memory
+  - All accesses must be aligned
+- **Initialization**: All locations zeroed at startup
 
-### Simulator
+### 5. Execution Flow
 ```python
-class Simulator:
-    """Main simulator implementation"""
-    def __init__(self, program: List[int])
-    def run(self) -> None
+while 0 <= i < len(pc_updates):
+    instruction = RISCVInstruction(instructions[i], self.pc, self.registers, self.memory)
+    self.pc = instruction.execute()  # Get next PC
+    i = pc_updates.index(self.pc)    # Find new instruction index
 ```
+Execution Stages:
+1. **Instruction Fetch**: Gets next instruction from memory
+2. **Decode**: Determines instruction type and extracts fields
+3. **Execute**: Performs operation (ALU, memory access, etc.)
+4. **Writeback**: Updates registers if needed
+5. **PC Update**:
+   - +4 for sequential execution
+   - Branch/jump target for control flow changes
+6. **Termination**: Stops when PC matches termination address
 
-## Instruction Execution
-
-### R-Type Instructions
-```python
-def _execute_r_type(self, instr: int) -> ExecutionResult:
-    """
-    Executes R-type arithmetic instructions:
-    - add, sub, slt, srl, or, and
-    
-    Format: opcode[31:24] | rd[23:16] | rs1[15:8] | rs2[7:0]
-    """
-```
-
-### I-Type Instructions
-```python
-def _execute_i_type(self, instr: int) -> ExecutionResult:
-    """
-    Executes I-type instructions:
-    - lw, addi, jalr
-    
-    Format: opcode[31:24] | rd[23:16] | rs1[15:8] | imm[7:0]
-    """
-```
-
-### S-Type Instructions
-```python
-def _execute_s_type(self, instr: int) -> ExecutionResult:
-    """
-    Executes store instructions:
-    - sw
-    
-    Format: opcode[31:24] | rs2[23:16] | rs1[15:8] | offset[7:0]
-    """
-```
-
-### B-Type Instructions
-```python
-def _execute_b_type(self, instr: int) -> ExecutionResult:
-    """
-    Executes branch instructions:
-    - beq, bne, blt
-    
-    Format: opcode[31:24] | rs1[23:16] | rs2[15:8] | offset[7:0]
-    """
-```
-
-### J-Type Instructions
-```python
-def _execute_j_type(self, instr: int) -> ExecutionResult:
-    """
-    Executes jump instructions:
-    - jal
-    
-    Format: opcode[31:24] | rd[23:16] | imm[15:0]
-    """
-```
-
-## State Tracking
-
-### Register State
-- 32 general-purpose registers (x0-x31)
-- x0 hardwired to zero
-- State displayed after each instruction
-
-### Memory State
-- Data memory (32 words)
-- Stack memory (32 words)
-- Bounds checking on all accesses
-- Memory dump on program completion
-
-### Program Counter
-- Tracks current instruction
-- Updated based on instruction type:
-  - Sequential: PC + 4
-  - Branch/Jump: PC + offset
-
-## Error Handling
-
-The simulator handles various runtime errors:
-- Invalid opcodes
-- Memory access violations
-- Unknown instructions
-- Program counter out of bounds
-
-## Output Format
-
-### Instruction Trace
-```
-PC: 0x00000000
-Executed: add (0x01020304)
-
-Registers:
-x0:   0 x1:   5 x2:   0 x3:   0 x4:   0 x5:   0 x6:   0 x7:   0
-x8:   0 x9:   0 x10:  0 x11:  0 x12:  0 x13:  0 x14:  0 x15:  0
-...
-
-Data Memory:
-[00]:  0 [01]:  0 [02]:  0 [03]:  0 [04]:  0 [05]:  0 [06]:  0 [07]:  0
-...
-```
-
-## Usage Example
-
+## Usage
 ```bash
-# Run simulator on binary file
-python simulator.py program.bin
+python Simulator.py input.txt output.txt
+```
 
-# Example output shows execution trace and final memory state
+## Example Output
+```
+0b00000000000000000000000000000000 0b00000000000000000000000000000000 ...
+0x00010000:0b00000000000000000000000000000000
+```
+
+## Limitations
+- Supports a subset of RISC-V instructions
+- Fixed memory size
+- Basic error handling
+
+## Future Improvements
+- Support more instruction types
+- Better memory management
+- Enhanced debugging features

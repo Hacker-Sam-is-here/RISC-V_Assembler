@@ -1,22 +1,39 @@
 # RISC-V Assembler and Simulator
 
-A custom implementation of a RISC-V assembler and simulator. This project consists of two main components that work together to convert assembly code to machine code and simulate its execution.
+A custom implementation of a RISC-V assembler and simulator. This project provides a complete toolchain for working with RISC-V assembly programs, from assembly to execution simulation.
+
+The system consists of two main components:
+1. **Assembler**: Converts RISC-V assembly code into executable machine code
+2. **Simulator**: Executes the machine code and simulates program behavior
+
+Together they form a complete development environment for learning and experimenting with RISC-V architecture.
 
 ## Project Structure
 
 ```
 .
-├── SimpleAssembler/
-│   ├── Assembler.py     # Main assembler implementation
-│   └── test.asm         # Sample assembly file
-├── SimpleSimulator/
-│   └── Simulator.py     # Main simulator implementation
-└── automatedTesting/    # Testing framework
-    ├── src/             # Source code for test suite
-    └── tests/           # Test cases and expected outputs
-        ├── assembly/    # Assembly test inputs
-        ├── bin/         # Binary test files
-        └── traces/      # Execution traces
+├── SimpleAssembler/            # Assembler component
+│   ├── Assembler.py            # Main assembler implementation
+│   ├── README.md               # Assembler documentation
+│
+├── SimpleSimulator/            # Simulator component
+│   ├── Simulator.py            # Main simulator implementation
+│   └── README.md               # Simulator documentation
+│
+└── automatedTesting/           # Testing framework
+    ├── src/                    # Test suite source code
+    │   ├── AsmGrader.py        # Assembler test grading
+    │   ├── Grader.py           # Test grading logic
+    │   ├── Results.py          # Test result handling
+    │   ├── SimGrader.py        # Simulator test grading
+    │   ├── colors.py           # Console color handling
+    │   └── main.py             # Test runner
+    │
+    └── tests/                  # Test cases
+        ├── assembly/           # Assembly test inputs
+        ├── bin/                # Binary test files
+        ├── traces/             # Execution traces
+        └── user_traces/        # User-generated traces
 ```
 
 ## Components

@@ -1,10 +1,6 @@
 # Runs automated tests for assembler and simulator
 
-import os
 import sys
-# Ensure that the directory containing this file is in the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 from colors import bcolors
 from AsmGrader import AsmGrader
 from SimGrader import SimGrader

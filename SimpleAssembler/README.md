@@ -1,99 +1,58 @@
-# RISC-V Assembler Implementation
+# RISC-V Assembler Documentation
 
-This is my implementation of a RISC-V assembler for the CO assignment. It takes assembly language input and generates binary machine code output.
+## Overview
+This is a custom RISC-V assembler implementation that converts assembly code into machine code. It handles:
+- Basic RISC-V instructions (R-type, I-type, branches, jumps, etc.)
+- Label resolution
+- Negative immediate handling
+- Error checking
 
-## How it Works
+## Code Walkthrough
 
-The assembler does a two-pass process:
-1. First pass: Collects all labels and their addresses
-2. Second pass: Actually generates the machine code
+### 1. Register Mapping System
+The assembler maintains a register map that converts both standard RISC-V register names (like 'zero', 'ra') and numeric names (like 'x0', 'x1') to register numbers.
 
-## Features
+### 2. Instruction Parsing
+The `parse_instruction()` method handles:
+- Stripping comments and whitespace
+- Label detection (lines ending with ':')
+- Instruction and operand separation
 
-- Handles all basic RISC-V instructions (arithmetic, logic, memory, branches, jumps)
-- Supports both x0-x31 register names and standard RISC-V aliases (zero, ra, sp, etc.)
-- Proper handling of negative immediates and branch offsets
-- Label support for jumps and branches
-- Detailed error messages for debugging
+### 3. Memory Operand Parsing
+The `parse_mem_operand()` method handles memory access formats like `8(t0)` by:
+- Extracting offset and register parts
+- Handling both numeric offsets and label references
+- Validating register names
 
-## Instructions Supported
+### 4. Instruction Encoding Methods
+The assembler includes specialized methods for each instruction type:
+- `make_r_type()` for arithmetic/logic instructions
+- `make_i_type()` for immediate instructions
+- Special handling for branches and jumps
 
-### R-type 
-- add, sub, sll, slt, srl, and, or, xor
-
-### I-type
-- addi, slti, sltiu, xori, ori, andi
-- slli, srli
-- lw
-- jalr
-
-### S-type
-- sw
-
-### B-type
-- beq, bne, blt, bge, bltu, bgeu
-
-### U-type
-- lui, auipc
-
-### J-type
-- jal
-
-### Special
-- rst (all 0s)
-- halt (all 1s)
+### 5. Two-Pass Assembly Process
+1. **First Pass**: Collects all label addresses by scanning through the code
+2. **Second Pass**: Generates actual machine code using the collected label information
 
 ## Usage
-
 ```bash
-python SimpleAssembler/Assembler.py <input_file.asm> <output_file.txt>
+python Assembler.py input.asm output.txt
 ```
 
-Example:
-```bash
-python SimpleAssembler/Assembler.py test.asm output.txt
+## Example
+```asm
+# Sample RISC-V assembly
+addi x1, x0, 42
+loop:
+    addi x1, x1, -1
+    bne x1, x0, loop
 ```
 
-## Implementation Notes
+## Limitations
+- Currently supports a subset of RISC-V instructions
+- Limited error handling for malformed instructions
 
-After quite a bit of trial and error, I got all the instruction encodings working properly. The trickiest parts were:
-
-1. Handling negative immediates correctly (needed sign extension)
-2. Getting branch offsets right (they're actually pretty complex!)
-3. Making the label system work for both forwards and backwards jumps
-4. Dealing with memory instruction formats like `lw x1, 8(x2)`
-
-## Test Results
-
-The assembler passes all automated tests:
-- Simple Tests: 5/5 passed
-- Hard Tests: 5/5 passed
-- Total Score: 2.0/2.0
-
-## File Structure
-
-- `Assembler.py`: Main assembler implementation
-- Helper functions for:
-  - Register name handling
-  - Instruction parsing
-  - Memory operand parsing
-  - Label management
-  - Binary encoding
-
-## Error Handling
-
-The assembler does proper error checking for:
-- Unknown instructions
-- Invalid register names
-- Malformed memory operations
-- Missing/extra operands
-- Duplicate labels
-- Invalid immediates
-
-## Learning Experience
-
-This project helped me really understand:
-- How assembly instructions map to binary
-- Why RISC-V uses different instruction formats
-- The importance of proper immediate handling
-- How branch offsets actually work
+## Future Improvements
+- Support for more instruction types
+- Better error messages
+- Macro support
